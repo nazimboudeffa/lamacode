@@ -13,11 +13,30 @@ export function createTUI() {
     process.exit(0)
   })
 
+  const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+  let spinnerTimer: NodeJS.Timeout | null = null
+  let spinnerFrame = 0
+
   return {
     prompt(): Promise<string> {
       return new Promise((resolve) => {
         rl.question(chalk.green("\nyou > "), (input) => resolve(input.trim()))
       })
+    },
+    startSpinner() {
+      spinnerFrame = 0
+      process.stdout.write("\n")
+      spinnerTimer = setInterval(() => {
+        process.stdout.write(chalk.dim(`\r${spinnerFrames[spinnerFrame % spinnerFrames.length]} réflexion en cours…`))
+        spinnerFrame++
+      }, 80)
+    },
+    stopSpinner() {
+      if (spinnerTimer) {
+        clearInterval(spinnerTimer)
+        spinnerTimer = null
+        process.stdout.write(`\r${" ".repeat(25)}\r`)
+      }
     },
     printChunk(text: string) {
       process.stdout.write(chalk.white(text))

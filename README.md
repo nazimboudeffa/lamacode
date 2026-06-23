@@ -27,20 +27,6 @@ npm install
 npm start
 ```
 
-Or specify a model and/or a custom server URL:
-
-```bash
-LMSTUDIO_MODEL="mistral-7b-instruct" npm start
-LMSTUDIO_URL="http://localhost:1234/v1" LMSTUDIO_MODEL="mistral-7b-instruct" npm start
-```
-
-### Build & run compiled JS
-
-```bash
-npm run build
-npm run start:js
-```
-
 ## Commands
 
 | Command    | Description                                      |
@@ -51,6 +37,8 @@ npm run start:js
 | `/exit`    | Quit lamacode                                    |
 
 ## Environment Variables
+
+LamaCode uses the loaded model by LMStudio
 
 | Variable          | Default                        | Description                        |
 |-------------------|--------------------------------|------------------------------------|
