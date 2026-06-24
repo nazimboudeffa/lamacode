@@ -20,8 +20,10 @@ export async function streamChat(history: History, onChunk: (text: string) => vo
   let full = ""
   for await (const chunk of stream) {
     const text = chunk.choices[0]?.delta?.content ?? ""
-    full += text
-    onChunk(text)
+    if (text) {
+      full += text
+      onChunk(text)
+    }
   }
   return full
 }
