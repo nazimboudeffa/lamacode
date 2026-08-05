@@ -1,13 +1,13 @@
 # lamacode
 
-Local AI chat CLI powered by [LM Studio](https://lmstudio.ai).
+Local AI chat CLI for [LM Studio](https://lmstudio.ai) and [Ollama](https://ollama.com).
 
-Inspired by [opencode](https://github.com/anomalyco/opencode), lamacode is a lightweight terminal chat client that works exclusively with local models served by LM Studio.
+Inspired by [opencode](https://github.com/anomalyco/opencode), lamacode is a lightweight terminal chat client for local models exposed through an OpenAI-compatible API.
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) v22+
-- [LM Studio](https://lmstudio.ai) with a model loaded and the local server running
+- LM Studio with its local server running, or Ollama with at least one installed model
 
 ## Installation
 
@@ -17,11 +17,44 @@ cd lamacode
 npm install
 ```
 
-## Usage
+Create your local configuration from the template:
 
-1. Open LM Studio and load a model
-2. Start the local server in LM Studio: **Local Server → Start Server** (default port: `1234`)
-3. Run lamacode:
+```bash
+cp .env.example .env
+```
+
+On Windows PowerShell, use `Copy-Item .env.example .env` instead.
+
+## LM Studio
+
+Configure `.env`:
+
+```dotenv
+LLM_PROVIDER=lmstudio
+LLM_MODEL=your-model-name
+```
+
+Open LM Studio, load a model, then start the local server. The default API URL is `http://localhost:1234/v1`.
+
+## Ollama
+
+Start Ollama and install a model if needed:
+
+```bash
+ollama serve
+ollama pull qwen3:8b
+```
+
+Configure `.env`:
+
+```dotenv
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen3:8b
+```
+
+The default API URL is `http://localhost:11434/v1`. Opening `/v1` directly in a browser can return `404`; this is expected. LamaCode calls the complete endpoints `/v1/models` and `/v1/chat/completions`.
+
+## Usage
 
 ```bash
 npm start
@@ -29,31 +62,33 @@ npm start
 
 ## Commands
 
-| Command    | Description                                      |
-|------------|--------------------------------------------------|
-| `/help`    | Show available commands                          |
-| `/models`  | List models available in LM Studio               |
-| `/clear`   | Clear the conversation history                   |
-| `/exit`    | Quit lamacode                                    |
+| Command   | Description                         |
+|-----------|-------------------------------------|
+| `/help`   | Show available commands             |
+| `/models` | List models exposed by the provider |
+| `/clear`  | Clear the conversation history      |
+| `/exit`   | Quit lamacode                       |
 
 ## Environment Variables
 
-LamaCode uses the loaded model by LMStudio
+| Variable       | Default                                  | Description                              |
+|----------------|------------------------------------------|------------------------------------------|
+| `LLM_PROVIDER` | `lmstudio`                               | `lmstudio` or `ollama`                   |
+| `LLM_BASE_URL` | Depends on the provider                  | OpenAI-compatible API base URL           |
+| `LLM_MODEL`    | First available model                    | Preferred model ID                       |
+| `LLM_API_KEY`  | `lm-studio` or `ollama`                  | API key; a placeholder works locally     |
 
-| Variable          | Default                        | Description                        |
-|-------------------|--------------------------------|------------------------------------|
-| `LMSTUDIO_URL`    | `http://localhost:1234/v1`     | LM Studio local server URL         |
-| `LMSTUDIO_MODEL`  | `local-model`                  | Model name as shown in LM Studio   |
+Environment variables already exported by the shell take precedence over values in `.env`.
 
 ## Project Structure
 
-```
+```text
 src/
-├── index.ts      # CLI entry point & main loop
-├── chat.ts       # Streaming chat + model listing
-├── config.ts     # LM Studio configuration
-├── history.ts    # Conversation history management
-└── tui.ts        # Terminal UI (readline + chalk)
+|-- index.ts      # CLI entry point and main loop
+|-- chat.ts       # Streaming chat and model listing
+|-- config.ts     # Provider and environment configuration
+|-- history.ts    # Conversation history management
+`-- tui.ts        # Terminal UI (readline and chalk)
 ```
 
 ## License

@@ -4,7 +4,7 @@ import type { History } from "./history.js"
 
 const client = new OpenAI({ baseURL: config.baseURL, apiKey: config.apiKey })
 
-let activeModel = config.defaultModel
+let activeModel = config.defaultModel ?? ""
 
 export function setActiveModel(model: string): void {
   activeModel = model
@@ -28,7 +28,7 @@ export async function streamChat(history: History, onChunk: (text: string) => vo
   return full
 }
 
-// Récupère la liste des modèles disponibles dans LM Studio
+// Récupère les modèles exposés par le serveur OpenAI-compatible.
 export async function listModels(): Promise<string[]> {
   const res = await client.models.list()
   return res.data.map((m) => m.id)
