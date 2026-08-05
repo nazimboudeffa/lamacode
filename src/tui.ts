@@ -18,6 +18,11 @@ export function createTUI() {
   let spinnerFrame = 0
 
   return {
+    ask(label: string): Promise<string> {
+      return new Promise((resolve) => {
+        rl.question(chalk.green(label), (input) => resolve(input.trim()))
+      })
+    },
     prompt(): Promise<string> {
       return new Promise((resolve) => {
         rl.question(chalk.green("\nyou > "), (input) => resolve(input.trim()))
