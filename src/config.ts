@@ -2,6 +2,14 @@ import "dotenv/config"
 
 export type LlmProvider = "lmstudio" | "ollama"
 
+export interface LlmConfig {
+  provider: LlmProvider
+  providerLabel: string
+  baseURL: string
+  apiKey: string
+  defaultModel?: string
+}
+
 const providerDefaults = {
   lmstudio: {
     label: "LM Studio",
@@ -20,18 +28,22 @@ function readEnv(name: string): string | undefined {
   return value || undefined
 }
 
-const providerValue = readEnv("LLM_PROVIDER")?.toLowerCase() ?? "lmstudio"
-if (providerValue !== "lmstudio" && providerValue !== "ollama") {
-  throw new Error(`LLM_PROVIDER doit être "lmstudio" ou "ollama" (reçu : "${providerValue}").`)
+export function resolveProvider(): LlmProvider {
+  const provider = readEnv("LLM_PROVIDER")?.toLowerCase() ?? "lmstudio"
+  if (provider !== "lmstudio" && provider !== "ollama") {
+    throw new Error(`LLM_PROVIDER doit être "lmstudio" ou "ollama" (reçu : "${provider}").`)
+  }
+  return provider
 }
 
-const provider: LlmProvider = providerValue
-const defaults = providerDefaults[provider]
+export function resolveConfig(provider = resolveProvider()): LlmConfig {
+  const defaults = providerDefaults[provider]
 
-export const config = {
-  provider,
-  providerLabel: defaults.label,
-  baseURL: readEnv("LLM_BASE_URL") ?? defaults.baseURL,
-  apiKey: readEnv("LLM_API_KEY") ?? defaults.apiKey,
-  defaultModel: readEnv("LLM_MODEL"),
+  return {
+    provider,
+    providerLabel: defaults.label,
+    baseURL: readEnv("LLM_BASE_URL") ?? defaults.baseURL,
+    apiKey: readEnv("LLM_API_KEY") ?? defaults.apiKey,
+    defaultModel: readEnv("LLM_MODEL"),
+  }
 }

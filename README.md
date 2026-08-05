@@ -60,6 +60,17 @@ The default API URL is `http://localhost:11434/v1`. Opening `/v1` directly in a 
 npm start
 ```
 
+At startup, choose LM Studio or Ollama. Press Enter to keep the provider configured by `LLM_PROVIDER`.
+
+```text
+Choisis le fournisseur local :
+  1. LM Studio
+  2. Ollama
+Fournisseur [2] >
+```
+
+You can enter `1`, `lmstudio`, `2`, or `ollama`. The OpenAI-compatible client is created only after this selection.
+
 ## Commands
 
 | Command   | Description                         |
@@ -79,6 +90,10 @@ npm start
 | `LLM_API_KEY`  | `lm-studio` or `ollama`                  | API key; a placeholder works locally     |
 
 Environment variables already exported by the shell take precedence over values in `.env`.
+
+`LLM_PROVIDER` controls the default menu choice. `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` override the selected provider's defaults when they are set.
+
+The local placeholder API keys are not secrets. If you configure a real authenticated endpoint, keep its key in `.env` or your shell environment and never commit it. The `.gitignore` excludes `.env` while allowing the safe `.env.example` template.
 
 ## Project Structure
 
