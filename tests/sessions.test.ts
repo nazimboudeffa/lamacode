@@ -1,7 +1,9 @@
 import assert from "node:assert/strict"
+import { existsSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { spawnSync } from "node:child_process"
 import test, { type TestContext } from "node:test"
 import { createSessionStore, type SessionData } from "../src/sessions.js"
 
@@ -116,4 +118,37 @@ test("rejects a symlinked session storage directory", async (t) => {
   const store = createSessionStore(workspace)
 
   await assert.rejects(() => store.list(), /lien symbolique|rediriger/)
+})
+
+test("stores sessions inside Git metadata for a Git workspace", async (t) => {
+  const workspace = await createWorkspace(t)
+  spawnSync("git", ["init", "--quiet"], { cwd: workspace })
+  const store = createSessionStore(workspace)
+
+  await store.save("git-safe", sessionData)
+
+  const status = spawnSync(
+    "git",
+    ["status", "--short", "--untracked-files=all"],
+    { cwd: workspace, encoding: "utf8" },
+  )
+  assert.equal(existsSync(path.join(workspace, ".git", "lamacode")), true)
+  assert.equal(existsSync(path.join(workspace, ".lamacode")), false)
+  assert.doesNotMatch(status.stdout, /\.lamacode/)
+})
+
+test("does not reuse legacy storage when the directory itself is not ignored", async (t) => {
+  const workspace = await createWorkspace(t)
+  spawnSync("git", ["init", "--quiet"], { cwd: workspace })
+  await mkdir(path.join(workspace, ".lamacode", "sessions"), { recursive: true })
+  await writeFile(
+    path.join(workspace, ".gitignore"),
+    ".lamacode/*\n!.lamacode/sessions/\n!.lamacode/sessions/*.json\n",
+  )
+  const store = createSessionStore(workspace)
+
+  await store.save("private", sessionData)
+
+  assert.equal(existsSync(path.join(workspace, ".lamacode", "sessions", "private.json")), false)
+  assert.equal(existsSync(path.join(workspace, ".git", "lamacode")), true)
 })
