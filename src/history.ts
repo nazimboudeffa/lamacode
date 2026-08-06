@@ -1,5 +1,10 @@
 import type { ChatCompletionMessageParam } from "openai/resources"
 
+export type ConversationMessage = {
+  role: "user" | "assistant"
+  content: string
+}
+
 export type History = {
   messages: ChatCompletionMessageParam[]
   push: (role: "user" | "assistant" | "system", content: string) => void
@@ -7,6 +12,8 @@ export type History = {
   count: () => number
   undoLastTurn: () => boolean
   prepareRetry: () => boolean
+  snapshot: () => ConversationMessage[]
+  restore: (messages: ConversationMessage[]) => void
 }
 
 export function createHistory(systemPrompt?: string): History {
@@ -34,6 +41,17 @@ export function createHistory(systemPrompt?: string): History {
     prepareRetry() {
       if (messages.at(-1)?.role === "assistant") messages.pop()
       return messages.at(-1)?.role === "user"
+    },
+    snapshot() {
+      return messages
+        .filter((message): message is ConversationMessage =>
+          (message.role === "user" || message.role === "assistant") &&
+          typeof message.content === "string")
+        .map((message) => ({ ...message }))
+    },
+    restore(conversation) {
+      messages.length = systemPrompt ? 1 : 0
+      for (const message of conversation) messages.push({ ...message })
     },
   }
 }

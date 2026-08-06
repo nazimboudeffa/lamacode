@@ -95,6 +95,10 @@ Enter a number, an exact model ID, or press Enter to keep the suggested model. `
 | `/add <file>` | Add a workspace file to the model context     |
 | `/context` | List files currently included in the context     |
 | `/remove <file>` | Remove a file from the context             |
+| `/save <name>` | Save the current conversation and context    |
+| `/sessions` | List saved sessions                              |
+| `/load <name>` | Restore a saved session                      |
+| `/delete-session <name>` | Delete a saved session              |
 | `/clear`  | Clear the conversation history                   |
 | `/exit`   | Quit lamacode                                    |
 
@@ -130,6 +134,30 @@ These protections reduce accidental disclosure and prompt-injection risk, but ca
 
 `@mentions` and email addresses are not interpreted as files. Unquoted references must include both a directory and a file extension, such as `@src/index.ts`; quote other paths or use `/add`. Invalid or ambiguous inline references are reported but do not block the message.
 
+## Sessions
+
+Save and restore work by name:
+
+```text
+/save authentication-refactor
+/sessions
+/load authentication-refactor
+/delete-session authentication-refactor
+```
+
+Sessions are stored per workspace in `.lamacode/sessions/`, which is ignored by Git. A session contains:
+
+- the selected provider and model;
+- user and assistant messages;
+- relative paths of files in the context;
+- creation and update timestamps.
+
+Configuration fields such as API keys, server URLs, `.env` values, system prompts, and file contents are never saved. User and assistant messages are stored verbatim, so do not paste secrets into the conversation. Loading a session re-reads and revalidates every context file, so deleted, ignored, sensitive, or otherwise invalid files make the load fail without replacing the current state.
+
+Select the same provider used by the session when starting LamaCode. The saved model must still be available. `/status` displays the active session and marks it as `modifiée` after unsaved changes. Saving an existing name updates that session atomically.
+
+Session names are normalized to lowercase. They accept 1 to 64 letters, numbers, dots, dashes, or underscores, but do not accept spaces, `..`, or Windows device names.
+
 ## Environment Variables
 
 | Variable       | Default                                  | Description                              |
@@ -154,6 +182,7 @@ src/
 |-- config.ts     # Provider and environment configuration
 |-- context.ts    # Safe workspace file context
 |-- history.ts    # Conversation history management
+|-- sessions.ts   # Local persistent session storage
 `-- tui.ts        # Terminal UI (readline and chalk)
 ```
 
