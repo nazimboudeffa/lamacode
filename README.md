@@ -71,14 +71,31 @@ Fournisseur [2] >
 
 You can enter `1`, `lmstudio`, `2`, or `ollama`. The OpenAI-compatible client is created only after this selection.
 
+LamaCode then retrieves the available models from the selected provider:
+
+```text
+Choisis un modèle :
+  1. qwen3:8b
+  2. qwen2.5-coder:7b
+Modèle [1] >
+```
+
+Enter a number, an exact model ID, or press Enter to keep the suggested model. `LLM_MODEL` controls the initial suggestion when that model is available.
+
 ## Commands
 
-| Command   | Description                         |
-|-----------|-------------------------------------|
-| `/help`   | Show available commands             |
-| `/models` | List models exposed by the provider |
-| `/clear`  | Clear the conversation history      |
-| `/exit`   | Quit lamacode                       |
+| Command   | Description                                      |
+|-----------|--------------------------------------------------|
+| `/help`   | Show available commands                          |
+| `/models` | List models exposed by the provider              |
+| `/model`  | Select another model without restarting          |
+| `/status` | Show provider, model, server, and message count   |
+| `/retry`  | Regenerate the last response                     |
+| `/undo`   | Remove the last user/assistant turn               |
+| `/clear`  | Clear the conversation history                   |
+| `/exit`   | Quit lamacode                                    |
+
+Changing the active model keeps the current conversation history. Use `/clear` to start a fresh conversation. `/status` never displays the configured API key.
 
 ## Environment Variables
 

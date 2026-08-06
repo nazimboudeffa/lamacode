@@ -20,6 +20,25 @@ async function selectProvider(
   }
 }
 
+async function selectModel(
+  tui: ReturnType<typeof createTUI>,
+  models: string[],
+  preferredModel?: string,
+): Promise<string> {
+  const defaultIndex = Math.max(models.indexOf(preferredModel ?? ""), 0)
+  tui.printInfo(`\nChoisis un modèle :\n${models.map((model, index) => `  ${index + 1}. ${model}`).join("\n")}`)
+
+  while (true) {
+    const choice = await tui.ask(`Modèle [${defaultIndex + 1}] > `)
+    if (!choice) return models[defaultIndex]
+
+    const selectedIndex = Number(choice) - 1
+    if (Number.isInteger(selectedIndex) && models[selectedIndex]) return models[selectedIndex]
+    if (models.includes(choice)) return choice
+    tui.printError(`Choix invalide. Saisis un nombre entre 1 et ${models.length}, ou le nom exact du modèle.`)
+  }
+}
+
 async function main() {
   const tui = createTUI()
   const provider = await selectProvider(tui, resolveProvider())
@@ -30,6 +49,10 @@ async function main() {
     "/exit": "quitter lamacode",
     "/clear": "effacer l'historique de conversation",
     "/models": `lister les modèles disponibles dans ${config.providerLabel}`,
+    "/model": "changer de modèle actif",
+    "/status": "afficher la configuration et l'état de la conversation",
+    "/retry": "régénérer la dernière réponse",
+    "/undo": "supprimer le dernier tour de conversation",
     "/help": "afficher cette aide",
   }
   const providerInstructions = config.provider === "ollama"
@@ -51,13 +74,11 @@ async function main() {
     if (config.defaultModel && !models.includes(config.defaultModel)) {
       tui.printInfo(
         `Le modèle configuré "${config.defaultModel}" n'est pas disponible. ` +
-        `Utilisation de "${models[0]}".`,
+        "Sélectionne un autre modèle.",
       )
     }
 
-    activeModel = config.defaultModel && models.includes(config.defaultModel)
-      ? config.defaultModel
-      : models[0]
+    activeModel = await selectModel(tui, models, config.defaultModel)
     setActiveModel(activeModel)
   } catch (err) {
     tui.printError(
@@ -77,6 +98,28 @@ async function main() {
   Serveur : ${config.baseURL}
   Tape /help pour les commandes.
 `)
+
+  async function generateResponse(): Promise<void> {
+    let firstChunk = true
+    try {
+      tui.startSpinner()
+      const response = await streamChat(history, (chunk) => {
+        if (firstChunk) {
+          tui.stopSpinner()
+          process.stdout.write(chalk.bold.cyan("lamacode") + chalk.cyan(" > "))
+          firstChunk = false
+        }
+        tui.printChunk(chunk)
+      })
+      history.push("assistant", response)
+      process.stdout.write("\n")
+    } catch (err) {
+      tui.printError(`\nErreur : ${err instanceof Error ? err.message : String(err)}`)
+      tui.printError(providerInstructions)
+    } finally {
+      tui.stopSpinner()
+    }
+  }
 
   while (true) {
     const input = await tui.prompt()
@@ -104,6 +147,50 @@ async function main() {
       continue
     }
 
+    if (input === "/model") {
+      try {
+        const models = await listModels()
+        if (models.length === 0) {
+          tui.printError(`Aucun modèle disponible dans ${config.providerLabel}.`)
+          continue
+        }
+        activeModel = await selectModel(tui, models, activeModel)
+        setActiveModel(activeModel)
+        tui.printInfo(`Modèle actif : ${activeModel}`)
+      } catch (err) {
+        tui.printError(
+          `Impossible de changer de modèle : ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+      continue
+    }
+
+    if (input === "/status") {
+      tui.printInfo(
+        `Fournisseur : ${config.providerLabel}\n` +
+        `Modèle      : ${activeModel}\n` +
+        `Serveur     : ${config.baseURL}\n` +
+        `Messages    : ${history.count()}`,
+      )
+      continue
+    }
+
+    if (input === "/undo") {
+      tui.printInfo(history.undoLastTurn()
+        ? "Dernier tour supprimé."
+        : "Aucun tour de conversation à supprimer.")
+      continue
+    }
+
+    if (input === "/retry") {
+      if (!history.prepareRetry()) {
+        tui.printInfo("Aucun message utilisateur à régénérer.")
+        continue
+      }
+      await generateResponse()
+      continue
+    }
+
     if (input === "/help") {
       tui.printInfo(
         Object.entries(commands)
@@ -114,25 +201,7 @@ async function main() {
     }
 
     history.push("user", input)
-
-    try {
-      tui.startSpinner()
-      let firstChunk = true
-      const response = await streamChat(history, (chunk) => {
-        if (firstChunk) {
-          tui.stopSpinner()
-          process.stdout.write(chalk.bold.cyan("lamacode") + chalk.cyan(" > "))
-          firstChunk = false
-        }
-        tui.printChunk(chunk)
-      })
-      tui.stopSpinner()
-      process.stdout.write("\n")
-      history.push("assistant", response)
-    } catch (err) {
-      tui.printError(`\nErreur : ${err instanceof Error ? err.message : String(err)}`)
-      tui.printError(providerInstructions)
-    }
+    await generateResponse()
   }
 }
 
