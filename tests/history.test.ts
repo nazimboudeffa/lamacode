@@ -56,3 +56,23 @@ test("retry rejects an empty conversation", () => {
   assert.equal(history.prepareRetry(), false)
   assert.deepEqual(history.messages, [{ role: "system", content: "system prompt" }])
 })
+
+test("snapshot excludes the system prompt and restore keeps the current one", () => {
+  const history = createHistory("trusted system prompt")
+  history.push("user", "question")
+  history.push("assistant", "answer")
+
+  const snapshot = history.snapshot()
+  const restored = createHistory("new trusted system prompt")
+  restored.restore(snapshot)
+
+  assert.deepEqual(snapshot, [
+    { role: "user", content: "question" },
+    { role: "assistant", content: "answer" },
+  ])
+  assert.deepEqual(restored.messages, [
+    { role: "system", content: "new trusted system prompt" },
+    { role: "user", content: "question" },
+    { role: "assistant", content: "answer" },
+  ])
+})
