@@ -92,10 +92,43 @@ Enter a number, an exact model ID, or press Enter to keep the suggested model. `
 | `/status` | Show provider, model, server, and message count   |
 | `/retry`  | Regenerate the last response                     |
 | `/undo`   | Remove the last user/assistant turn               |
+| `/add <file>` | Add a workspace file to the model context     |
+| `/context` | List files currently included in the context     |
+| `/remove <file>` | Remove a file from the context             |
 | `/clear`  | Clear the conversation history                   |
 | `/exit`   | Quit lamacode                                    |
 
 Changing the active model keeps the current conversation history. Use `/clear` to start a fresh conversation. `/status` never displays the configured API key.
+
+## File Context
+
+Add files explicitly:
+
+```text
+/add src/index.ts
+/context
+/remove src/index.ts
+```
+
+You can also reference files directly in a prompt. References are added to the persistent context before the message is sent:
+
+```text
+Explain @src/index.ts and compare it with @"docs/example file.md"
+```
+
+The loaded file snapshots are included in every request without being copied into the conversation history. Run `/add` again to refresh a modified file. `/clear` clears the conversation but keeps the selected files; remove them with `/remove`.
+
+File access is restricted for safety:
+
+- paths must resolve to regular files inside the current workspace;
+- symbolic links, Git-ignored files, binary files, and sensitive filenames are rejected;
+- common private-key and API-token patterns are rejected heuristically;
+- each file is limited to 64 KiB and the complete framed context to 256 KiB;
+- file contents are sent as user-provided, untrusted reference data rather than system instructions.
+
+These protections reduce accidental disclosure and prompt-injection risk, but cannot prove that a file is safe. Review files before adding them.
+
+`@mentions` and email addresses are not interpreted as files. Unquoted references must include both a directory and a file extension, such as `@src/index.ts`; quote other paths or use `/add`. Invalid or ambiguous inline references are reported but do not block the message.
 
 ## Environment Variables
 
@@ -119,6 +152,7 @@ src/
 |-- index.ts      # CLI entry point and main loop
 |-- chat.ts       # Streaming chat and model listing
 |-- config.ts     # Provider and environment configuration
+|-- context.ts    # Safe workspace file context
 |-- history.ts    # Conversation history management
 `-- tui.ts        # Terminal UI (readline and chalk)
 ```
