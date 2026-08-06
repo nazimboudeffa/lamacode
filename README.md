@@ -218,7 +218,17 @@ The local placeholder API keys are not secrets. If you configure a real authenti
 
 ```text
 src/
-|-- index.ts      # CLI entry point and main loop
+|-- index.ts      # Minimal CLI entry point and fatal error boundary
+|-- application/
+|   |-- runtime.ts      # Mutable runtime state and current token budget
+|   |-- generation.ts   # Response generation state transitions
+|   `-- compaction.ts   # Transactional conversation compaction
+|-- cli/
+|   |-- run.ts                 # Bootstrap and interactive loop
+|   |-- tui.ts                 # Terminal I/O (readline and chalk)
+|   |-- selectors.ts           # Workspace, provider, and model prompts
+|   |-- command-registry.ts    # Command parsing and help metadata
+|   `-- commands/              # Conversation, context, and session handlers
 |-- chat.ts       # Streaming chat and model listing
 |-- config.ts     # Provider and environment configuration
 |-- context.ts    # Safe workspace file context
@@ -226,9 +236,18 @@ src/
 |-- history.ts    # Conversation history management
 |-- sessions.ts   # Local persistent session storage
 |-- tokens.ts     # Token estimation and budget calculation
-|-- workspace.ts  # Workspace selection and validation
-`-- tui.ts        # Terminal UI (readline and chalk)
+`-- workspace.ts  # Workspace selection and validation
 ```
+
+## Modular Architecture
+
+The codebase uses a pragmatic modular separation rather than strict dependency inversion. The
+`cli` layer owns terminal interaction, command routing, and user-facing messages. The
+`application` layer centralizes mutable runtime state and the most sensitive workflows: generation
+and transactional compaction. Existing root modules provide infrastructure for providers,
+workspace validation, safe file context, Git checks, and persistent sessions; security-sensitive
+validation remains at those boundaries. This keeps the terminal renderer replaceable without
+forcing a large rewrite of stable infrastructure.
 
 ## License
 
