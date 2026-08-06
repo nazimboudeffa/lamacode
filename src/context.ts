@@ -1,8 +1,8 @@
 import { lstat, open, realpath, stat } from "node:fs/promises"
 import { constants } from "node:fs"
 import path from "node:path"
-import { spawnSync } from "node:child_process"
 import { TextDecoder } from "node:util"
+import { runGit } from "./git.js"
 
 const DEFAULT_MAX_FILE_BYTES = 64 * 1024
 const DEFAULT_MAX_TOTAL_BYTES = 256 * 1024
@@ -17,6 +17,8 @@ type ContextFile = {
 type ContextOptions = {
   maxFileBytes?: number
   maxTotalBytes?: number
+  allowNonGit?: boolean
+  environment?: NodeJS.ProcessEnv
 }
 
 const sensitiveBasenames = new Set([
@@ -70,14 +72,22 @@ function containsSecret(content: string): boolean {
     /(?:api[_-]?key|secret|token|password)["']?\s*[:=]\s*["']?[A-Za-z0-9_\/+=.-]{20,}/i.test(content)
 }
 
-function isGitIgnored(workspace: string, relativePath: string): boolean {
-  const result = spawnSync(
-    "git",
+function isGitIgnored(
+  workspace: string,
+  relativePath: string,
+  allowNonGit: boolean,
+  environment: NodeJS.ProcessEnv,
+): boolean {
+  const result = runGit(
     ["check-ignore", "--quiet", "--no-index", "--", relativePath],
-    { cwd: workspace, stdio: "ignore" },
+    workspace,
+    environment,
   )
   if (result.status === 0) return true
   if (result.status === 1) return false
+  if (allowNonGit && result.status === 128 && /not a git repository/i.test(result.stderr)) {
+    return false
+  }
   throw new Error("Impossible de vérifier les règles .gitignore du workspace.")
 }
 
@@ -112,6 +122,8 @@ export function createFileContext(workspace = process.cwd(), options: ContextOpt
   const root = path.resolve(workspace)
   const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES
   const maxTotalBytes = options.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES
+  const allowNonGit = options.allowNonGit ?? false
+  const environment = options.environment ?? process.env
   const files = new Map<string, ContextFile>()
 
   function formatFiles(contextFiles: Iterable<ContextFile>): string {
@@ -160,7 +172,9 @@ export function createFileContext(workspace = process.cwd(), options: ContextOpt
   async function load(input: string): Promise<ContextFile> {
     const { absolutePath, relativePath } = await resolveFile(input)
     if (isSensitivePath(relativePath)) throw new Error("Ce chemin peut contenir des informations sensibles.")
-    if (isGitIgnored(root, relativePath)) throw new Error("Ce fichier est ignoré par Git.")
+    if (isGitIgnored(root, relativePath, allowNonGit, environment)) {
+      throw new Error("Ce fichier est ignoré par Git.")
+    }
 
     const handle = await open(absolutePath, constants.O_RDONLY | constants.O_NOFOLLOW)
     let buffer: Buffer

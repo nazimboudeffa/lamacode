@@ -115,6 +115,31 @@ test("fails closed when Git ignore rules cannot be checked", async (t) => {
   await assert.rejects(() => context.add("file.txt"), /gitignore/)
 })
 
+test("allows an explicitly selected non-Git workspace", async (t) => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "lamacode-non-git-"))
+  t.after(() => rm(workspace, { recursive: true, force: true }))
+  await writeFile(path.join(workspace, "file.txt"), "content")
+  const context = createFileContext(workspace, { allowNonGit: true })
+
+  assert.equal((await context.add("file.txt")).path, "file.txt")
+})
+
+test("ignores inherited Git environment when checking ignored files", async (t) => {
+  const workspace = await createWorkspace(t)
+  const otherRepository = await createWorkspace(t)
+  await writeFile(path.join(workspace, ".gitignore"), "ignored.txt\n")
+  await writeFile(path.join(workspace, "ignored.txt"), "ignored")
+  const context = createFileContext(workspace, {
+    environment: {
+      ...process.env,
+      GIT_DIR: path.join(otherRepository, ".git"),
+      GIT_WORK_TREE: otherRepository,
+    },
+  })
+
+  await assert.rejects(() => context.add("ignored.txt"), /ignoré par Git/)
+})
+
 test("rejects NTFS alternate data streams", { skip: process.platform !== "win32" }, async (t) => {
   const workspace = await createWorkspace(t)
   await writeFile(path.join(workspace, "safe.txt"), "safe")

@@ -60,7 +60,13 @@ The default API URL is `http://localhost:11434/v1`. Opening `/v1` directly in a 
 npm start
 ```
 
-At startup, choose LM Studio or Ollama. Press Enter to keep the provider configured by `LLM_PROVIDER`.
+At startup, select a workspace. Press Enter to use `LAMACODE_WORKSPACE` or the current launch directory:
+
+```text
+Workspace [C:\projects\lamacode] >
+```
+
+Then choose LM Studio or Ollama. Press Enter to keep the provider configured by `LLM_PROVIDER`.
 
 ```text
 Choisis le fournisseur local :
@@ -99,10 +105,27 @@ Enter a number, an exact model ID, or press Enter to keep the suggested model. `
 | `/sessions` | List saved sessions                              |
 | `/load <name>` | Restore a saved session                      |
 | `/delete-session <name>` | Delete a saved session              |
+| `/workspace <directory>` | Show or change the active workspace |
 | `/clear`  | Clear the conversation history                   |
 | `/exit`   | Quit lamacode                                    |
 
 Changing the active model keeps the current conversation history. Use `/clear` to start a fresh conversation. `/status` never displays the configured API key.
+
+## Workspace
+
+LamaCode confines file context and sessions to one active workspace. Select it at startup or change it later:
+
+```text
+/workspace
+/workspace C:\projects\MULTIFORCES
+/workspace ../another-project
+```
+
+Absolute paths and paths relative to the current workspace are accepted. The target must be an existing directory. Git repositories are recommended because LamaCode can enforce their `.gitignore` rules.
+
+Non-Git directories are accepted with a visible warning. `.gitignore` protection is unavailable there, but workspace confinement, sensitive-path, secret, binary, symlink, UTF-8, and size checks remain active.
+
+Changing workspace keeps the selected provider and model, but clears the current conversation, file context, and active session. LamaCode asks for confirmation before discarding unsaved work. Sessions are stored independently in each workspace.
 
 ## File Context
 
@@ -145,7 +168,7 @@ Save and restore work by name:
 /delete-session authentication-refactor
 ```
 
-Sessions are stored per workspace in `.lamacode/sessions/`, which is ignored by Git. A session contains:
+Sessions are stored per workspace. Git workspaces use private Git metadata under `.git/lamacode/`, while non-Git workspaces use `.lamacode/sessions/`. Existing safe `.lamacode` session directories remain supported. A session contains:
 
 - the selected provider and model;
 - user and assistant messages;
@@ -166,10 +189,11 @@ Session names are normalized to lowercase. They accept 1 to 64 letters, numbers,
 | `LLM_BASE_URL` | Depends on the provider                  | OpenAI-compatible API base URL           |
 | `LLM_MODEL`    | First available model                    | Preferred model ID                       |
 | `LLM_API_KEY`  | `lm-studio` or `ollama`                  | API key; a placeholder works locally     |
+| `LAMACODE_WORKSPACE` | Current launch directory           | Workspace suggested at startup           |
 
 Environment variables already exported by the shell take precedence over values in `.env`.
 
-`LLM_PROVIDER` controls the default menu choice. `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` override the selected provider's defaults when they are set.
+`LLM_PROVIDER` controls the default provider menu choice. `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` override the selected provider's defaults when they are set. `LAMACODE_WORKSPACE` can be absolute or relative to the directory where LamaCode is launched.
 
 The local placeholder API keys are not secrets. If you configure a real authenticated endpoint, keep its key in `.env` or your shell environment and never commit it. The `.gitignore` excludes `.env` while allowing the safe `.env.example` template.
 
@@ -181,8 +205,10 @@ src/
 |-- chat.ts       # Streaming chat and model listing
 |-- config.ts     # Provider and environment configuration
 |-- context.ts    # Safe workspace file context
+|-- git.ts        # Sanitized Git command execution
 |-- history.ts    # Conversation history management
 |-- sessions.ts   # Local persistent session storage
+|-- workspace.ts  # Workspace selection and validation
 `-- tui.ts        # Terminal UI (readline and chalk)
 ```
 

@@ -1,8 +1,10 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { constants } from "node:fs"
+import { existsSync } from "node:fs"
 import { lstat, mkdir, open, readdir, realpath, rename, rm } from "node:fs/promises"
 import path from "node:path"
 import type { LlmProvider } from "./config.js"
+import { runGit } from "./git.js"
 import type { ConversationMessage } from "./history.js"
 
 const SESSION_VERSION = 1
@@ -83,11 +85,27 @@ function validateSession(value: unknown, expectedName: string): Session {
 }
 
 export function createSessionStore(workspace = process.cwd()) {
-  const storageDir = path.join(path.resolve(workspace), ".lamacode")
+  const root = path.resolve(workspace)
+  const legacyStorageDir = path.join(root, ".lamacode")
+  const gitStorage = runGit(["rev-parse", "--git-path", "lamacode"], root)
+  const legacyIgnored = runGit(
+    ["check-ignore", "--quiet", "--no-index", "--", ".lamacode"],
+    root,
+  ).status === 0
+  const canUseLegacy = existsSync(path.join(legacyStorageDir, "sessions")) &&
+    (gitStorage.status !== 0 || legacyIgnored)
+  const workspaceId = createHash("sha256").update(root).digest("hex").slice(0, 16)
+  const gitStorageDir = gitStorage.status === 0 && gitStorage.stdout.trim()
+    ? path.resolve(root, gitStorage.stdout.trim(), workspaceId)
+    : null
+  const storageDir = canUseLegacy || !gitStorageDir ? legacyStorageDir : gitStorageDir
   const sessionsDir = path.join(storageDir, "sessions")
 
   async function ensureStorage(): Promise<void> {
-    for (const directory of [storageDir, sessionsDir]) {
+    const directories = storageDir === gitStorageDir
+      ? [path.dirname(storageDir), storageDir, sessionsDir]
+      : [storageDir, sessionsDir]
+    for (const directory of directories) {
       const info = await lstat(directory).catch(() => null)
       if (info?.isSymbolicLink()) throw new Error("Le dossier de sessions ne peut pas être un lien symbolique.")
       if (info && !info.isDirectory()) throw new Error("Le chemin de stockage des sessions est invalide.")
