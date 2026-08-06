@@ -106,6 +106,7 @@ Enter a number, an exact model ID, or press Enter to keep the suggested model. `
 | `/load <name>` | Restore a saved session                      |
 | `/delete-session <name>` | Delete a saved session              |
 | `/workspace <directory>` | Show or change the active workspace |
+| `/compact` | Summarize older messages to free context space   |
 | `/clear`  | Clear the conversation history                   |
 | `/exit`   | Quit lamacode                                    |
 
@@ -126,6 +127,20 @@ Absolute paths and paths relative to the current workspace are accepted. The tar
 Non-Git directories are accepted with a visible warning. `.gitignore` protection is unavailable there, but workspace confinement, sensitive-path, secret, binary, symlink, UTF-8, and size checks remain active.
 
 Changing workspace keeps the selected provider and model, but clears the current conversation, file context, and active session. LamaCode asks for confirmation before discarding unsaved work. Sessions are stored independently in each workspace.
+
+## Token Management
+
+LamaCode estimates request size before every generation using a conservative upper bound of one token per UTF-8 byte. It is not the model's exact tokenizer count and can overestimate usage.
+
+The input budget is:
+
+```text
+LLM_CONTEXT_SIZE - LLM_MAX_OUTPUT_TOKENS
+```
+
+At 80% of the input budget, LamaCode displays a warning. Above the limit, it refuses the request before contacting the provider and suggests `/compact`, `/remove`, `/undo`, or `/clear`. `/status` displays the current estimate, limit, percentage, and complete context window.
+
+Use `/compact` to ask the active model for a concise summary of older messages while preserving the latest user/assistant turn. The history is replaced only after a non-empty summary is returned; failures leave it unchanged. File context is not included in the summarization request.
 
 ## File Context
 
@@ -190,10 +205,12 @@ Session names are normalized to lowercase. They accept 1 to 64 letters, numbers,
 | `LLM_MODEL`    | First available model                    | Preferred model ID                       |
 | `LLM_API_KEY`  | `lm-studio` or `ollama`                  | API key; a placeholder works locally     |
 | `LAMACODE_WORKSPACE` | Current launch directory           | Workspace suggested at startup           |
+| `LLM_CONTEXT_SIZE` | `8192`                                  | Model context window in tokens            |
+| `LLM_MAX_OUTPUT_TOKENS` | `1024`                            | Tokens reserved for each model response   |
 
 Environment variables already exported by the shell take precedence over values in `.env`.
 
-`LLM_PROVIDER` controls the default provider menu choice. `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` override the selected provider's defaults when they are set. `LAMACODE_WORKSPACE` can be absolute or relative to the directory where LamaCode is launched.
+`LLM_PROVIDER` controls the default provider menu choice. `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` override the selected provider's defaults when they are set. `LAMACODE_WORKSPACE` can be absolute or relative to the directory where LamaCode is launched. Set the token values to match the selected model; the output reserve must be smaller than the context size.
 
 The local placeholder API keys are not secrets. If you configure a real authenticated endpoint, keep its key in `.env` or your shell environment and never commit it. The `.gitignore` excludes `.env` while allowing the safe `.env.example` template.
 
@@ -208,6 +225,7 @@ src/
 |-- git.ts        # Sanitized Git command execution
 |-- history.ts    # Conversation history management
 |-- sessions.ts   # Local persistent session storage
+|-- tokens.ts     # Token estimation and budget calculation
 |-- workspace.ts  # Workspace selection and validation
 `-- tui.ts        # Terminal UI (readline and chalk)
 ```

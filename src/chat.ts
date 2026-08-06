@@ -43,6 +43,7 @@ export function createChatClient(config: LlmConfig) {
     const stream = await client.chat.completions.create({
       model: activeModel,
       messages: buildMessages(history, context),
+      max_tokens: config.maxOutputTokens,
       stream: true,
     })
 
@@ -62,5 +63,18 @@ export function createChatClient(config: LlmConfig) {
     return res.data.map((model) => model.id)
   }
 
-  return { listModels, setActiveModel, streamChat }
+  async function completeChat(messages: ChatCompletionMessageParam[]) {
+    const response = await client.chat.completions.create({
+      model: activeModel,
+      messages,
+      max_tokens: config.maxOutputTokens,
+      stream: false,
+    })
+    return {
+      content: response.choices[0]?.message?.content ?? "",
+      finishReason: response.choices[0]?.finish_reason ?? null,
+    }
+  }
+
+  return { completeChat, listModels, setActiveModel, streamChat }
 }
