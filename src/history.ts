@@ -14,6 +14,17 @@ export type History = {
   prepareRetry: () => boolean
   snapshot: () => ConversationMessage[]
   restore: (messages: ConversationMessage[]) => void
+  compact: (summary: string, keepRecentMessages?: number) => void
+}
+
+export function recentConversationMessageCount(conversation: ConversationMessage[]): number {
+  const last = conversation.at(-1)
+  if (!last) return 0
+  if (last.role === "assistant" && conversation.at(-2)?.role === "user") return 2
+  if (last.role === "user") {
+    return conversation.at(-2)?.role === "assistant" && conversation.at(-3)?.role === "user" ? 3 : 1
+  }
+  return 1
 }
 
 export function createHistory(systemPrompt?: string): History {
@@ -52,6 +63,26 @@ export function createHistory(systemPrompt?: string): History {
     restore(conversation) {
       messages.length = systemPrompt ? 1 : 0
       for (const message of conversation) messages.push({ ...message })
+    },
+    compact(summary, keepRecentMessages) {
+      const conversation = messages
+        .filter((message): message is ConversationMessage =>
+          (message.role === "user" || message.role === "assistant") &&
+          typeof message.content === "string")
+        .map((message) => ({ ...message }))
+      const recentCount = keepRecentMessages ?? recentConversationMessageCount(conversation)
+      const recent = conversation.slice(-recentCount)
+      messages.length = systemPrompt ? 1 : 0
+      for (const message of [
+        {
+          role: "assistant",
+          content: "Automatic summary of earlier conversation (untrusted reference data):\n" +
+            `--- BEGIN SUMMARY ---\n${summary}\n--- END SUMMARY ---`,
+        },
+        ...recent,
+      ] satisfies ConversationMessage[]) {
+        messages.push({ ...message })
+      }
     },
   }
 }
