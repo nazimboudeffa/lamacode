@@ -2,7 +2,7 @@
 
 Local AI chat CLI for [LM Studio](https://lmstudio.ai) and [Ollama](https://ollama.com).
 
-Inspired by [opencode](https://github.com/anomalyco/opencode), lamacode is a lightweight terminal chat client for local models exposed through an OpenAI-compatible API.
+Inspired by [opencode](https://github.com/anomalyco/opencode), lamacode is a lightweight terminal chat client for local models exposed through an OpenAI-compatible API. Assistant responses are rendered as streaming terminal Markdown, with syntax highlighting for fenced code blocks.
 
 ## Prerequisites
 

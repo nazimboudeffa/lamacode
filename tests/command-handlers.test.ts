@@ -40,6 +40,7 @@ function fakeTui(answer = ""): TUI {
     beginAssistantResponse() {},
     printAssistantChunk() {},
     endAssistantResponse() {},
+    printWelcome() {},
     printInfo() {},
     printError() {},
     close() {},
