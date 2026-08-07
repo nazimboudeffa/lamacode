@@ -36,7 +36,15 @@ async function runInteractiveCli(tui: TUI): Promise<number> {
   const activeModel = await connectProvider(tui, config, chat, providerInstructions)
   if (!activeModel) return 1
   const runtime = new Runtime(workspace, activeModel, config)
-  printBanner(tui, runtime)
+  tui.printWelcome({
+    provider: config.providerLabel,
+    model: activeModel,
+    server: config.baseURL,
+    workspace: workspace.path,
+    isGit: workspace.isGit,
+    contextWindow: config.contextWindow,
+    maxOutputTokens: config.maxOutputTokens,
+  })
 
   const generate = () => generateResponse(runtime, chat.streamChat, {
     onBudgetExceeded(estimated, limit) {
@@ -130,21 +138,6 @@ async function connectProvider(
     )
     return undefined
   }
-}
-
-function printBanner(tui: TUI, runtime: Runtime): void {
-  const { config, workspace, activeModel } = runtime
-  tui.printInfo(`
-╦  ╔═╗╔╦╗╔═╗╔═╗╔═╗╔╦╗╔═╗
-║  ╠═╣║║║╠═╣║  ║ ║ ║║╣
-╩═╝╩ ╩╩ ╩╩ ╩╚═╝╚═╝═╩╝╚═╝
-  Local AI — powered by ${config.providerLabel}
-  Modèle : ${activeModel}
-  Serveur : ${config.baseURL}
-  Workspace : ${workspace.path}${workspace.isGit ? "" : " (non Git)"}
-  Contexte : ${config.contextWindow} tokens (${config.maxOutputTokens} réservés à la réponse)
-  Tape /help pour les commandes.
-`)
 }
 
 async function addInlineReferences(input: string, runtime: Runtime, tui: TUI): Promise<void> {
